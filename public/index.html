@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>BLIND AUCTION | V0.1</title>
+        <link rel="stylesheet" href="css/style.css">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+    </head>
+    <body>
+        <div id="top">
+            <h1>Artwork 1/10</h1>
+        </div>
+        <div id="gameContainer" class="enabled">
+            <div id="imageContainer">
+                <div id="infoBox">
+                    <h2>Bidding Status</h2>
+                    <hr>
+                    <h2>Top Bid: $0</h2>
+                    <h2>Top Bidder: N/A</h2>
+                </div>
+                <div id="imageBox">
+                    <img src="img/default.jpg">
+                </div>
+                <div id="infoBox">
+                    <h2>Insider Info</h2>
+                    <hr>
+                    <h2>Crayon: $5,800</h2>
+                    <h2>Bird: $600</h2>
+                </div>
+            </div>
+            <div id="paddleContainer">
+                <img src="img/pointer0.png">
+                <img src="img/pointer1.png">
+                <img src="img/pointer2.png">
+                <img src="img/pointer3.png">
+                <img src="img/pointer4.png">
+            </div>
+        </div>
+        <div id="paintingContainer" class="disabled">
+            <canvas id="canvas">
+            </canvas>
+        </div>
+        <div id="bottom">
+            <div id="left">
+                <button id="leave" class="hudbutton">leave</button>
+            </div>
+            <div id="mid">
+                <button id="raise1" class="hudbutton">$100</button>
+                <button id="raise2" class="hudbutton">$200</button>
+                <button id="raise3" class="hudbutton" disabled="true">$300</button>
+            </div>
+            <div id="right">
+                <button id="money" class="hudbutton" disabled="true">$25,000</button>
+            </div>
+        </div>
+        <div id="overlay">
+            <img id="scanlines" src="img/scanlines.png" style="opacity: 0.1;">
+        </div>
+    </body>
+    <script src="js/client.js"></script>
+</html>
