@@ -30,8 +30,8 @@
                 <div class="infoBox">
                     <h2>Bidding Status</h2>
                     <hr>
-                    <h2>Top Bid: $0</h2>
-                    <h2>Top Bidder: N/A</h2>
+                    <h2 id="topBid">Top Bid: $0</h2>
+                    <h2 id="topBidder">Top Bidder: N/A</h2>
                 </div>
                 <div id="imageBox">
                     <img src="img/default.jpg">
@@ -87,9 +87,9 @@
             </div>
             <button id="lobbyStartBtn" class="hudbutton disabled" onclick="startGame()">start</button>
             <div id="mid" class="disabled">
-                <button id="raise1" class="hudbutton">$100</button>
-                <button id="raise2" class="hudbutton">$200</button>
-                <button id="raise3" class="hudbutton" disabled="true">$300</button>
+                <button id="raise1" class="hudbutton" onclick="raise1()">$100</button>
+                <button id="raise2" class="hudbutton" onclick="raise2()">$200</button>
+                <button id="raise3" class="hudbutton" onclick="raise3()">$300</button>
             </div>
             <div id="right" class="disabled">
                 <button id="money" class="hudbutton" disabled="true">$25,000</button>

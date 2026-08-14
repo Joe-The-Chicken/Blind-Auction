@@ -122,7 +122,10 @@ wss.on("connection", (socket) => {
 
                     timer: null,
                     prompts: [],
-                    artworks: []
+                    paintings: [],
+
+                    topBid: 0,
+                    topBidder: -1
                 };
 
                 lobbies.set(code, lobby);
@@ -312,8 +315,88 @@ wss.on("connection", (socket) => {
                                 }));
                             }
                         });
+
+                        lobby.timer = setTimeout(() => {
+                            broadcast(lobby, {
+                                type: "grabPaintings"
+                            });
+
+                            lobby.timer = null;
+                        }, 90000);
                     }
                     return;
+                }
+
+                if(data.type === "paintings") {
+                    data.paintings.forEach(painting => lobby.paintings.push(painting));
+                    console.log(lobby.paintings.length, lobby.players.length);
+
+                    if (lobby.paintings.length / 2 == lobby.players.length) {
+                        function rand(a,b) {
+                            return Math.floor(Math.random() * (b-a)) + a
+                        }
+                        
+                        lobby.paintings.forEach(painting => {
+                            painting.value = rand(4,50) * 100
+                        })
+
+                        function shuffle(array) {
+                            for (let i = array.length - 1; i > 0; i--) {
+                                const j = Math.floor(Math.random() * (i + 1));
+                                [array[i], array[j]] = [array[j], array[i]];
+                            }
+                            return array;
+                        }
+
+                        const shufflePaintings = shuffle(lobby.paintings)
+                        lobby.sockets.forEach(socket => {
+                            if (socket.readyState === WebSocket.OPEN) {
+                                const player = lobby.players.find(
+                                    player => player.id === socket.playerId
+                                );
+
+                                const hints = [];
+
+                                socket.send(JSON.stringify({
+                                    type: "initBidding",
+                                    hints: hints,
+                                    paintings: shufflePaintings,
+                                    startingMoney: 2500
+                                }));
+                            }
+                        });
+                    }
+                    return;
+                }
+
+                if (data.type === "sendBid") {
+                    if(data.bid <= lobby.topBid) {
+                        return;
+                    }
+                    if(data.player == lobby.topBidder) {
+                        return;
+                    }
+
+                    broadcast(lobby, {
+                        type: "lobbyPointer",
+                        pointerUp: false,
+                        playerId: lobby.topBidder
+                    });
+
+                    lobby.topBid = data.bid;
+                    lobby.topBidder = data.player;
+
+                    broadcast(lobby, {
+                        type: "bidProcessed",
+                        bid: lobby.topBid,
+                        player: lobby.players.find(player => player.id === lobby.topBidder)
+                    });
+
+                    broadcast(lobby, {
+                        type: "lobbyPointer",
+                        pointerUp: true,
+                        playerId: lobby.topBidder
+                    });
                 }
 
                 // Any other message
@@ -363,7 +446,7 @@ function joinLobby(socket, lobby) {
         data: {
             money: 3000,
             debt: 0,
-            artworks: []
+            paintings: []
         }
     };
 

@@ -292,11 +292,12 @@ h2 {
     width: min-content;
     border: #0e121f calc(2 * (min(9vw, 16vh) / 16)) solid;
     filter: drop-shadow(0px 0px 6px rgba(0, 0, 0, 0.6));
+    background-color: white;
 }
 
 #imageBox img, #paintingBox canvas {
     height: 100%;
-    width: 100%;
+    aspect-ratio: 1/1;
 }
 
 #paddleContainer {

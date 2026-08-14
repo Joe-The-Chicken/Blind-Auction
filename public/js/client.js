@@ -80,6 +80,7 @@ function enterGame(code) {
         .classList.remove("disabled")
 
     lobbyState = "lobby";
+    updateStartButton();
 }
 
 // lobby
@@ -96,6 +97,7 @@ function addPointer(playerId) {
 
     if(playerId == myPlayerId) {
         pointer.onmouseover = () => {
+            if(lobbyState != "lobby") return;
             sendMessage({
                 type: "lobbyPointer",
                 pointerUp: true,
@@ -104,6 +106,7 @@ function addPointer(playerId) {
         }
 
         pointer.onmouseout = () => {
+            if(lobbyState != "lobby") return;
             sendMessage({
                 type: "lobbyPointer",
                 pointerUp: false,
@@ -179,6 +182,11 @@ function removePlayerFromLobby(playerId) {
 function updateStartButton() {
     if(document.getElementById("playersInLobby").children[2].id == "lobbyPlayer" + myPlayerId) {
         document.getElementById("lobbyStartBtn").classList.remove("disabled");
+        if(document.getElementById("playersInLobby").children.length <= 3) {
+            document.getElementById("lobbyStartBtn").disabled = true;
+        } else {
+            document.getElementById("lobbyStartBtn").disabled = false;
+        }
     } else {
         document.getElementById("lobbyStartBtn").classList.add("disabled");
     }
@@ -379,23 +387,7 @@ function startPainting() {
     document.getElementById("paintingPrompt").textContent =
         "Prompt: " + prompts[0];
 
-    secondsLeft = 120;
-    countTimer();
-}
-
-
-function startPainting() {
-    setBrush("brush");
-
-    document.getElementById("writingContainer").classList.add("disabled");
-    document.getElementById("paintingContainer").classList.remove("disabled");
-
-    document.getElementById("top").className = "painting";
-    document.getElementById("top").children[0].textContent = "Time Left: 2:00";
-
-    document.getElementById("paintingPrompt").textContent = "Prompt: " + prompts[0];
-
-    secondsLeft = 120;
+    secondsLeft = 90;
     countTimer();
 }
 
@@ -431,6 +423,77 @@ function setBrush(id) {
 function endPainting() {
     saveAndClearPainting();
     setBrush("brush");
+}
+
+// bidding
+var serverPaintings = [];
+var hints = [];
+var currentPainting = 0;
+
+var topBid = 0;
+var lastBidder = -1;
+var lastBidderName = "";
+var money = 0;
+
+function initBidding() {
+    document.getElementById("paintingContainer").classList.add("disabled");
+    document.getElementById("lobbyContainer").classList.add("disabled");
+    document.getElementById("gameContainer").classList.remove("disabled");
+    document.getElementById("imageContainer").classList.remove("disabled");
+
+    document.getElementById("mid").classList.remove("disabled");
+    document.getElementById("right").classList.remove("disabled");
+
+    document.getElementById("top").className = "bidding";
+    document.getElementById("top").children[0].textContent = "Artwork 1/10";
+
+    updateBidStatus();
+}
+
+function loadArtwork() {
+    document.getElementById("imageBox").children[0].src = serverPaintings[currentPainting].img;
+}
+
+function updateBidStatus() {
+    document.getElementById("top").children[0].textContent = `Artwork ${currentPainting + 1}/${serverPaintings.length}`;
+
+    document.getElementById("topBid").textContent = `Top Bid: $${topBid.toLocaleString("en-us")}}`;
+    document.getElementById("topBidder").textContent = `Top Bidder: ${lastBidderName ? lastBidderName : "N/A"}`;
+
+    document.getElementById("raise1").textContent = `$${(topBid + 100).toLocaleString("en-us")}`;
+    document.getElementById("raise2").textContent = `$${(topBid + 200).toLocaleString("en-us")}`;
+    document.getElementById("raise3").textContent = `$${(topBid + 300).toLocaleString("en-us")}`;
+
+    document.getElementById("money").textContent = `$${money.toLocaleString("en-us")}`;
+}
+
+function raise1() {
+    submitBid(topBid + 100);
+}
+
+function raise2() {
+    submitBid(topBid + 200);
+}
+
+function raise3() {
+    submitBid(topBid + 300);
+}
+
+function submitBid(amount) {
+    if(money < amount) {
+        return;
+    }
+    if(amount <= topBid) {
+        return;
+    }
+    if(lastBidder == myPlayerId) {
+        return;
+    }
+    sendMessage({
+        type: "sendBid",
+        player: myPlayerId,
+        bid: amount
+    });
 }
 
 /*
@@ -544,6 +607,51 @@ socket.onmessage = (event) => {
     if (message.type === "startPainting") {
         prompts = message.prompts;
         startPainting();
+    }
+
+    if (message.type === "grabPaintings") {
+        endPainting()
+        var p = [];
+        let pr = 0;
+        paintings.forEach(painting => {
+            p.push({
+                img: painting,
+                prompt: prompts[pr],
+                artist: myPlayerId
+            }); 
+            pr++;
+        })
+
+        sendMessage({
+            type: "paintings",
+            playerId: myPlayerId,
+            paintings: p
+        });
+    }
+
+    if (message.type === "initBidding") {
+        serverPaintings = message.paintings;
+        hints = message.hints;
+        money = message.startingMoney;
+        currentPainting = 0;
+        initBidding();
+        loadArtwork();
+    }
+
+    if (message.type === "loadArtwork") {
+        currentPainting = message.num;
+        loadArtwork();
+    }
+
+    if (message.type === "bidProcessed") {
+        topBid = message.bid;
+        lastBidder = message.player.id;
+        lastBidderName = message.player.name;
+        updateBidStatus();
+    }
+
+    if (message.type === "updateMoney") {
+        money = message.money;
     }
 
 };
