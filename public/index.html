@@ -9,11 +9,25 @@
     </head>
     <body>
         <div id="top">
-            <h1>Artwork 1/10</h1>
+            <h1>Money For Babies</h1>
         </div>
-        <div id="gameContainer" class="enabled">
-            <div id="imageContainer">
-                <div id="infoBox">
+        <div id="joinContainer">
+            <button id="createBtn" class="hudbutton big" onclick="createLobby()">create lobby</button>
+            <button id="joinBtn" class="hudbutton big" onclick="initJoinLobby()">join lobby</button>
+            
+            <input id="goInput" class="hudinput big disabled" type="text" placeholder="Code"></input>
+            <button id="goBtn" class="hudbutton big disabled" onclick="joinLobby()">join</button>
+            <button id="backBtn" class="hudbutton disabled" onclick="backLobby()">back</button>
+        </div>
+        <div id="gameContainer" class="disabled">
+            <div id="lobbyContainer">
+                <div class="infoBox" id="playersInLobby">
+                    <h2>Players in Lobby</h2>
+                    <hr>
+                </div>
+            </div>
+            <div id="imageContainer" class="disabled">
+                <div class="infoBox">
                     <h2>Bidding Status</h2>
                     <hr>
                     <h2>Top Bid: $0</h2>
@@ -22,7 +36,7 @@
                 <div id="imageBox">
                     <img src="img/default.jpg">
                 </div>
-                <div id="infoBox">
+                <div class="infoBox">
                     <h2>Insider Info</h2>
                     <hr>
                     <h2>Crayon: $5,800</h2>
@@ -31,25 +45,51 @@
             </div>
             <div id="paddleContainer"></div>
         </div>
+        <div id="writingContainer" class="disabled">
+            <div class="infoBox">
+                <h2>Instructions</h2>
+                <hr>
+                <h2>Write down 2 prompts for other people to draw.<br><br>Once the time is up, you will be given 2 different prompts to draw.</h2>
+            </div>
+            <div class="infoBox" style="align-items: center;">
+                <h2>Prompts</h2>
+                <hr>
+                <input id="prompt1" class="hudinput long" type="text" placeholder="Prompt #1" maxlength="16"></input>
+                <input id="prompt2" class="hudinput long" type="text" placeholder="Prompt #2" maxlength="16"></input>
+            </div>
+        </div>
         <div id="paintingContainer" class="disabled">
-            <canvas id="canvas">
-            </canvas>
+            <div class="infoBox">
+                <h2>Instructions</h2>
+                <hr>
+                <h2>Draw the following prompts within the time remaining. <br><br>You have 2 different canvases, so don't draw them on the same one.</h2>
+            </div>
+            <div id="paintingBox">
+                <canvas id="canvas"></canvas>
+            </div>
+            <div class="infoBox">
+                <h2>Prompt</h2>
+                <hr>
+                <h2 id="paintingPrompt">Prompt: </h2>
+                <button id="nextPrompt" class="hudbutton" onclick="nextPrompt()">Next</button>
+            </div>
         </div>
         <div id="bottom">
-            <div id="left">
-                <button id="leave" class="hudbutton">leave</button>
+            <div id="left" class="disabled">
+                <button id="leave" class="hudbutton" onclick="leaveGame()">leave</button>
             </div>
-            <div id="mid">
+            <button id="lobbyStartBtn" class="hudbutton disabled" onclick="startGame()">start</button>
+            <div id="mid" class="disabled">
                 <button id="raise1" class="hudbutton">$100</button>
                 <button id="raise2" class="hudbutton">$200</button>
                 <button id="raise3" class="hudbutton" disabled="true">$300</button>
             </div>
-            <div id="right">
+            <div id="right" class="disabled">
                 <button id="money" class="hudbutton" disabled="true">$25,000</button>
             </div>
         </div>
         <div id="overlay">
-            <img id="scanlines" src="img/scanlines.png" style="opacity: 0.1;">
+            <img id="scanlines" src="img/scanlines.png" style="opacity: 0.06;">
         </div>
     </body>
     <script src="js/client.js"></script>
