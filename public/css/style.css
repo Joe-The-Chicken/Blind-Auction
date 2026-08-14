@@ -38,9 +38,14 @@ body {
     justify-content: space-around;
 }
 
-#writingContainer {
+#writingContainer, #paintingContainer {
     display: flex;
     justify-content: space-around;
+}
+
+#paintingBox {
+    aspect-ratio: 1/1;
+    background-color: white;
 }
 
 #top, #bottom {
@@ -113,6 +118,17 @@ body {
     height: calc(12 * (min(9vw, 16vh) / 16));
 }
 
+.hudbutton.square {
+    width: calc(8 * (min(9vw, 16vh) / 16));
+    height: calc(8 * (min(9vw, 16vh) / 16));
+}
+
+.hudbutton.circle {
+    width: calc(8 * (min(9vw, 16vh) / 16));
+    height: calc(8 * (min(9vw, 16vh) / 16));
+    border-radius: calc(8 * (min(9vw, 16vh) / 16));
+}
+
 .hudbutton:disabled {
     cursor: default;
     color: #252a44;
@@ -128,6 +144,11 @@ body {
 }
 
 .hudbutton:hover:enabled {
+    background-color: white;
+    color: #252a44;
+}
+
+.hudbutton:enabled.selected {
     background-color: white;
     color: #252a44;
 }
@@ -194,6 +215,76 @@ h2 {
     border: #0e121f calc(2 * (min(9vw, 16vh) / 16)) solid;
     background-color: white;
     filter: drop-shadow(0px 0px 6px rgba(0, 0, 0, 0.6));
+}
+
+#paintingBar {
+    width: 8%;
+    height: 80%;
+    border: #0e121f calc(2 * (min(9vw, 16vh) / 16)) solid;
+    background-color: white;
+    filter: drop-shadow(0px 0px 6px rgba(0, 0, 0, 0.6));
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: calc(4 * (min(9vw, 16vh) / 16));
+}
+
+.toolIcon {
+    display: block;
+    width: 70%;
+    height: 70%;
+    background-color: white;
+
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: contain;
+
+    transition: background-color 0.3s ease-in-out;
+}
+
+.brushIcon {
+    mask-image: url("../img/brush.svg");
+    -webkit-mask-image: url("../img/brush.svg");
+}
+
+.eraserIcon {
+    mask-image: url("../img/eraser.svg");
+    -webkit-mask-image: url("../img/eraser.svg");
+}
+
+#brush, #eraser {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hudbutton:hover .toolIcon, .hudbutton.selected .toolIcon {
+    background-color: #252a44;
+}
+
+#canvasWrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+#canvas,
+#cursorCanvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+}
+
+#cursorCanvas {
+    pointer-events: none;
+    opacity: 0.4;
 }
 
 #imageBox, #paintingBox {

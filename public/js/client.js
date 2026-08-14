@@ -5,6 +5,7 @@ const socket = new WebSocket(
 const paddleContainer = document.getElementById("paddleContainer");
 
 let myPlayerId = null;
+let lobbyState = null;
 
 /*
 █░░ █▀█ █▀▀ ▄▀█ █░░   █▀▀ █░█ █▄░█ █▀▀ ▀█▀ █ █▀█ █▄░█ █▀
@@ -77,6 +78,8 @@ function enterGame(code) {
     document
         .getElementById("left")
         .classList.remove("disabled")
+
+    lobbyState = "lobby";
 }
 
 // lobby
@@ -156,7 +159,7 @@ function addPlayerToLobby(player) {
 
     infoBox.appendChild(playerText);
 
-    updateStartButton();
+    if(lobbyState == "lobby") updateStartButton();
 }
 
 
@@ -170,7 +173,7 @@ function removePlayerFromLobby(playerId) {
         playerText.remove();
     }
 
-    updateStartButton();
+    if(lobbyState == "lobby") updateStartButton();
 }
 
 function updateStartButton() {
@@ -189,6 +192,7 @@ function leaveGame() {
         type: "leaveLobby"
     });
     backLobby();
+    location.reload();
 }
 
 //writing
@@ -202,6 +206,8 @@ var secondsLeft;
 var timerTimeout = null;
 
 function startWriting() {
+    lobbyState = "game";
+
     document.getElementById("gameContainer").classList.add("disabled");
     document.getElementById("writingContainer").classList.remove("disabled");
 
@@ -235,7 +241,152 @@ function updateTimer() {
 var prompts = [];
 var paintings = [];
 
+var currentTool = "brush";
+var brushSize = 4;
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const cursorCanvas = document.getElementById("cursorCanvas");
+const cursorCtx = cursorCanvas.getContext("2d");
+
+let painting = false;
+let lastX = null;
+let lastY = null;
+
+
+// Get mouse position in canvas coordinates
+function getCanvasPosition(event) {
+    const rect = canvas.getBoundingClientRect();
+
+    return {
+        x: (event.clientX - rect.left) * canvas.width / rect.width,
+        y: (event.clientY - rect.top) * canvas.height / rect.height
+    };
+}
+
+
+// Start drawing
+canvas.addEventListener("mousedown", (event) => {
+    painting = true;
+    draw(event);
+});
+
+
+// Stop drawing
+canvas.addEventListener("mouseup", () => {
+    painting = false;
+    lastX = null;
+    lastY = null;
+});
+
+
+// Stop drawing if mouse leaves canvas
+canvas.addEventListener("mouseleave", () => {
+    painting = false;
+    lastX = null;
+    lastY = null;
+
+    cursorCtx.clearRect(
+        0,
+        0,
+        cursorCanvas.width,
+        cursorCanvas.height
+    );
+});
+
+
+// Mouse movement
+canvas.addEventListener("mousemove", (event) => {
+    moveCursor(event);
+
+    if (painting) {
+        draw(event);
+    }
+});
+
+
+// Show cursor when entering
+canvas.addEventListener("mouseenter", (event) => {
+    moveCursor(event);
+});
+
+
+// Draw on painting canvas
+function draw(event) {
+    const pos = getCanvasPosition(event);
+
+    ctx.strokeStyle =
+        currentTool === "eraser" ? "white" : "black";
+
+    ctx.lineWidth = brushSize;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    if (lastX === null) {
+        lastX = pos.x;
+        lastY = pos.y;
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+
+    lastX = pos.x;
+    lastY = pos.y;
+}
+
+
+// Draw the brush-size indicator
+function moveCursor(event) {
+    const pos = getCanvasPosition(event);
+
+    // Clear previous cursor
+    cursorCtx.clearRect(
+        0,
+        0,
+        cursorCanvas.width,
+        cursorCanvas.height
+    );
+
+    cursorCtx.beginPath();
+
+    cursorCtx.arc(
+        pos.x,
+        pos.y,
+        brushSize / 2,
+        0,
+        Math.PI * 2
+    );
+
+    cursorCtx.strokeStyle = "black"
+
+    cursorCtx.lineWidth = 1;
+    cursorCtx.stroke();
+}
+
+
 function startPainting() {
+    setBrush("brush");
+
+    document.getElementById("writingContainer").classList.add("disabled");
+    document.getElementById("paintingContainer").classList.remove("disabled");
+
+    document.getElementById("top").className = "painting";
+    document.getElementById("top").children[0].textContent = "Time Left: 2:00";
+
+    document.getElementById("paintingPrompt").textContent =
+        "Prompt: " + prompts[0];
+
+    secondsLeft = 120;
+    countTimer();
+}
+
+
+function startPainting() {
+    setBrush("brush");
+
     document.getElementById("writingContainer").classList.add("disabled");
     document.getElementById("paintingContainer").classList.remove("disabled");
 
@@ -249,9 +400,6 @@ function startPainting() {
 }
 
 function saveAndClearPainting() {
-    const canvas = document.getElementById("myCanvas");
-    const ctx = canvas.getContext("2d");
-
     paintings.push(canvas.toDataURL("image/png"));
     ctx.clearRect(0,0,100,100);
 }
@@ -259,6 +407,30 @@ function saveAndClearPainting() {
 function nextPrompt() {
     saveAndClearPainting();
     document.getElementById("paintingPrompt").textContent = "Prompt: " + prompts[1];
+    if(paintings.length == 2 /* total paintings */ - 1) {
+        document.getElementById("nextPrompt").classList.add("disabled");
+    }
+}
+
+function setBrush(id) {
+    const brush = document.getElementById("brush");
+    const eraser = document.getElementById("eraser");
+
+    brush.classList.remove("selected");
+    eraser.classList.remove("selected");
+
+    if(id == "brush") {
+        brush.classList.add("selected");
+    }
+    if(id == "eraser") {
+        eraser.classList.add("selected");
+    }
+    currentTool = id;
+}
+
+function endPainting() {
+    saveAndClearPainting();
+    setBrush("brush");
 }
 
 /*

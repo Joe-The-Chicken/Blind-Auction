@@ -62,16 +62,23 @@
             <div class="infoBox">
                 <h2>Instructions</h2>
                 <hr>
-                <h2>Draw the following prompts within the time remaining. <br><br>You have 2 different canvases, so don't draw them on the same one.</h2>
-            </div>
-            <div id="paintingBox">
-                <canvas id="canvas"></canvas>
-            </div>
-            <div class="infoBox">
-                <h2>Prompt</h2>
-                <hr>
+                <h2>Draw the following prompts within the time remaining. <br><br>You have 2 different canvases, so don't draw them on the same one.<br><br></h2>
                 <h2 id="paintingPrompt">Prompt: </h2>
                 <button id="nextPrompt" class="hudbutton" onclick="nextPrompt()">Next</button>
+            </div>
+            <div id="paintingBox">
+                <div id="canvasWrapper">
+                    <canvas id="canvas" width="100" height="100"></canvas>
+                    <canvas id="cursorCanvas" width="100" height="100"></canvas>
+                </div>
+            </div>
+            <div id="paintingBar">
+                <button id="brush" class="hudbutton square selected" onclick="setBrush('brush')">
+                    <span class="toolIcon brushIcon"></span>
+                </button>
+                <button id="eraser" class="hudbutton square" onclick="setBrush('eraser')">
+                    <span class="toolIcon eraserIcon"></span>
+                </button>
             </div>
         </div>
         <div id="bottom">
