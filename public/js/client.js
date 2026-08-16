@@ -90,29 +90,60 @@ function addPointer(playerId) {
         return;
     }
 
-    const pointer = document.createElement("img");
-
+    // Container for the entire pointer
+    const pointer = document.createElement("div");
     pointer.id = `pointer${playerId}`;
-    pointer.src = `img/pointer${playerId}.png`;
+    pointer.className = "pointer";
 
-    if(playerId == myPlayerId) {
+    // Player-specific shaft
+    const shaft = document.createElement("img");
+    shaft.className = "pointerShaft";
+    shaft.src = `img/pointer${playerId}.png`;
+
+    const headNum = 7;
+
+    // Customizable head
+    const head = document.createElement("img");
+    head.className = "pointerHead";
+    head.src = `img/head${headNum}.png`;
+
+    const offsetXMap = [-14, 0, 0, 0, 0, 0, -2, -28];
+
+    function loadPointer() {
+        const pixelScale = shaft.clientWidth / shaft.naturalWidth;
+
+        head.style.width = `${head.naturalWidth * pixelScale}px`;
+        head.style.transform =
+            `translate(${offsetXMap[headNum] * pixelScale}px, ${8 * pixelScale}px)`;
+
+        requestAnimationFrame(loadPointer);
+    }
+
+    requestAnimationFrame(loadPointer);
+
+    pointer.appendChild(head);
+    pointer.appendChild(shaft);
+
+    if (playerId == myPlayerId) {
         pointer.onmouseover = () => {
-            if(lobbyState != "lobby") return;
+            if (lobbyState != "lobby") return;
+
             sendMessage({
                 type: "lobbyPointer",
                 pointerUp: true,
                 playerId: myPlayerId
             });
-        }
+        };
 
         pointer.onmouseout = () => {
-            if(lobbyState != "lobby") return;
+            if (lobbyState != "lobby") return;
+
             sendMessage({
                 type: "lobbyPointer",
                 pointerUp: false,
                 playerId: myPlayerId
             });
-        }
+        };
     }
 
     paddleContainer.appendChild(pointer);
@@ -125,15 +156,13 @@ function removePointer(playerId) {
     if (pointer) {
         pointer.remove();
     }
-
-    console.log(`Removed pointer ${playerId}`);
 }
 
 function raisePointer(playerId) {
     const pointer = document.getElementById(`pointer${playerId}`);
 
     if (pointer) {
-        pointer.className = "raised";
+        pointer.classList.add("raised");
     }
 }
 
@@ -141,7 +170,7 @@ function lowerPointer(playerId) {
     const pointer = document.getElementById(`pointer${playerId}`);
 
     if (pointer) {
-        pointer.className = "";
+        pointer.classList.remove("raised");
     }
 }
 
@@ -204,14 +233,16 @@ function leaveGame() {
 }
 
 //writing
+var secondsLeft = 0;
+var timerEnd = 0;
+var timerInterval = null;
+var timerMode = null;
+
 function startGame() {
     sendMessage({
         type: "startGame"
     });
 }
-
-var secondsLeft;
-var timerTimeout = null;
 
 function startWriting() {
     lobbyState = "game";
@@ -222,35 +253,98 @@ function startWriting() {
     document.getElementById("lobbyStartBtn").classList.add("disabled");
 
     document.getElementById("top").className = "writing";
-    document.getElementById("top").children[0].textContent = "Time Left: 0:20";
 
-    secondsLeft = 20;
-    countTimer();
+    startTimer(20);
 }
 
-function countTimer() {
-    if(secondsLeft == 1) {
-        timerTimeout = null;
-        return;
+// Start a timer using an absolute end time
+function startTimer(seconds, mode = "normal") {
+    clearInterval(timerInterval);
+
+    timerMode = mode;
+    timerEnd = Date.now() + seconds * 1000;
+
+    updateTimerDisplay();
+
+    timerInterval = setInterval(() => {
+        updateTimerDisplay();
+
+        if (Date.now() >= timerEnd) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            secondsLeft = 0;
+            updateTimerDisplay();
+        }
+    }, 100);
+}
+
+// Stop the current timer
+function stopTimer() {
+    clearInterval(timerInterval);
+    timerInterval = null;
+    timerEnd = 0;
+    secondsLeft = 0;
+}
+
+// Get the actual amount of time remaining
+function getSecondsLeft() {
+    return Math.max(
+        0,
+        Math.ceil((timerEnd - Date.now()) / 1000)
+    );
+}
+
+// Update the timer display
+function updateTimerDisplay(head = "") {
+    if (timerEnd <= 0) {
+        secondsLeft = 0;
+    } else {
+        secondsLeft = getSecondsLeft();
     }
 
-    timerTimeout = setTimeout(() => {
-        secondsLeft--;
-        updateTimer();
-        countTimer();
-    }, 1000);
-}
+    const minutes = Math.floor(secondsLeft / 60);
+    const seconds = secondsLeft % 60;
 
-function updateTimer() {
-    document.getElementById("top").children[0].textContent = "Time Left: " + Math.floor(secondsLeft / 60) + ":" + (secondsLeft % 60 < 10 ? "0" : "") + (secondsLeft % 60);
-} 
+    const time =
+        minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+
+    if (head !== "") {
+        document.getElementById("top").children[0].textContent =
+            head + " - " + time;
+    } else {
+        document.getElementById("top").children[0].textContent =
+            "Time Left: " + time;
+    }
+}
 
 //painting
 var prompts = [];
 var paintings = [];
 
+const colors = [
+    "#000000",
+    "#1D2B53",
+    "#7E2553",
+    "#008751",
+    "#AB5236",
+    "#5F574F",
+    "#C2C3C7",
+    "#FFF1E8",
+    "#FF004D",
+    "#FFA300",
+    "#FFEC27",
+    "#00E436",
+    "#29ADFF",
+    "#83769C",
+    "#FF77A8",
+    "#FFCCAA"
+];
+
+const eraserColor = "#FFF";
+
 var currentTool = "brush";
-var brushSize = 4;
+var brushSize = 10;
+var brushColor = 0;
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -261,7 +355,6 @@ const cursorCtx = cursorCanvas.getContext("2d");
 let painting = false;
 let lastX = null;
 let lastY = null;
-
 
 // Get mouse position in canvas coordinates
 function getCanvasPosition(event) {
@@ -325,7 +418,7 @@ function draw(event) {
     const pos = getCanvasPosition(event);
 
     ctx.strokeStyle =
-        currentTool === "eraser" ? "white" : "black";
+        currentTool === "eraser" ? eraserColor : colors[brushColor];
 
     ctx.lineWidth = brushSize;
     ctx.lineCap = "round";
@@ -387,13 +480,12 @@ function startPainting() {
     document.getElementById("paintingPrompt").textContent =
         "Prompt: " + prompts[0];
 
-    secondsLeft = 90;
-    countTimer();
+    startTimer(90);
 }
 
 function saveAndClearPainting() {
     paintings.push(canvas.toDataURL("image/png"));
-    ctx.clearRect(0,0,100,100);
+    ctx.clearRect(0,0,400,400);
 }
 
 function nextPrompt() {
@@ -452,12 +544,17 @@ function initBidding() {
 
 function loadArtwork() {
     document.getElementById("imageBox").children[0].src = serverPaintings[currentPainting].img;
+
+    timerTimeout = null;
+    topBid = 0;
+    lastBidder = -1;
+    lastBidderName = "";
 }
 
 function updateBidStatus() {
     document.getElementById("top").children[0].textContent = `Artwork ${currentPainting + 1}/${serverPaintings.length}`;
 
-    document.getElementById("topBid").textContent = `Top Bid: $${topBid.toLocaleString("en-us")}}`;
+    document.getElementById("topBid").textContent = `Top Bid: $${topBid.toLocaleString("en-us")}`;
     document.getElementById("topBidder").textContent = `Top Bidder: ${lastBidderName ? lastBidderName : "N/A"}`;
 
     document.getElementById("raise1").textContent = `$${(topBid + 100).toLocaleString("en-us")}`;
@@ -465,6 +562,46 @@ function updateBidStatus() {
     document.getElementById("raise3").textContent = `$${(topBid + 300).toLocaleString("en-us")}`;
 
     document.getElementById("money").textContent = `$${money.toLocaleString("en-us")}`;
+
+    const bidButtons = document.getElementById("mid").children;
+    for(const child of bidButtons) {
+        child.disabled = lastBidder == myPlayerId;
+    }
+}
+
+function updateBidTimer(t = 10) {
+    clearInterval(timerInterval);
+
+    timerEnd = Date.now() + t * 1000;
+
+    updateBidTimerDisplay();
+
+    timerInterval = setInterval(() => {
+        updateBidTimerDisplay();
+
+        if (Date.now() >= timerEnd) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            secondsLeft = 0;
+            updateBidTimerDisplay();
+        }
+    }, 100);
+}
+
+function updateBidTimerDisplay() {
+    secondsLeft = Math.max(
+        0,
+        Math.ceil((timerEnd - Date.now()) / 1000)
+    );
+
+    const head =
+        `Artwork ${currentPainting + 1}/${serverPaintings.length}`;
+
+    if (secondsLeft <= 5 && secondsLeft != 0) {
+        updateTimerDisplay(head);
+    } else {
+        document.getElementById("top").children[0].textContent = head;
+    }
 }
 
 function raise1() {
@@ -505,19 +642,10 @@ function sendMessage(contents) {
     if (socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify(contents));
     } else {
-        console.log("Cannot send message: WebSocket is not connected.");
+        console.error("Could not send message: WebSocket is not connected.");
     }
 }
 
-// WebSocket connected
-socket.onopen = () => {
-
-    console.log("Connected to server");
-
-};
-
-
-// Receive server messages
 socket.onmessage = (event) => {
     const message = JSON.parse(event.data);
     console.log("Received:", message);
@@ -528,12 +656,8 @@ socket.onmessage = (event) => {
     }
 
     if (message.type === "players") {
-
         myPlayerId = message.yourId;
 
-        console.log("My player ID:", myPlayerId);
-
-        // Add all existing players
         message.players.forEach(player => {
             addPointer(player.id);
             addPlayerToLobby(player);
@@ -555,12 +679,8 @@ socket.onmessage = (event) => {
     }
 
     if (message.type === "lobbyJoined") {
-
         myPlayerId = message.yourId;
 
-        console.log("My player ID:", myPlayerId);
-
-        // Add all players currently in the lobby
         message.players.forEach(player => {
             addPointer(player.id);
             addPlayerToLobby(player);
@@ -577,15 +697,6 @@ socket.onmessage = (event) => {
         } else {
             lowerPointer(message.playerId);
         }
-        return;
-    }
-
-    // Player data changed
-    if (message.type === "playerUpdated") {
-        console.log(
-            "Player updated:",
-            message.player
-        );
         return;
     }
 
@@ -641,23 +752,36 @@ socket.onmessage = (event) => {
     if (message.type === "loadArtwork") {
         currentPainting = message.num;
         loadArtwork();
+        updateBidStatus();
     }
 
     if (message.type === "bidProcessed") {
         topBid = message.bid;
         lastBidder = message.player.id;
         lastBidderName = message.player.name;
+
         updateBidStatus();
+        updateBidTimer(10);
+
+        return;
     }
 
     if (message.type === "updateMoney") {
         money = message.money;
     }
 
-};
+    if (message.type === "artworkSold") {
+        topBid = message.bid;
+        lastBidder = message.playerId;
 
+        updateBidStatus();
+
+        return;
+    }
+
+};
 
 // Connection closed
 socket.onclose = () => {
-    console.log("Disconnected from server");
+    console.warn("Disconnected from server");
 };

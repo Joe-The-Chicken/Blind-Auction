@@ -8,40 +8,24 @@ const wss = new WebSocket.Server({ server });
 
 app.use(express.static("public"));
 
-const MAX_PLAYERS = 5;
-const CODE_LENGTH = 6;
+const MAX_PLAYERS = 8;
+const CODE_LENGTH = 4;
 
 // All active lobbies
 const lobbies = new Map();
 
-
 // Generate a random lobby code
 function generateLobbyCode() {
-    const characters = "BCDFGHJKLMNPQRSTVWXYZ";
-
-    let char = characters[
-        Math.floor(Math.random() * characters.length)
-    ];
-
+    const chars = "BCDFGHJKLMNPQRSTVWXYZ";
     let code = "";
-
     for (let i = 0; i < CODE_LENGTH; i++) {
-        if(Math.random() < 2 * (code.length - (code.split(char).length - 1)) / CODE_LENGTH && (code.split(char).length - 1) < 3) {
-            code += char;
-        } else {
-            code += characters[
-                Math.floor(Math.random() * characters.length)
-            ];
-        }
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-
     return code;
 }
 
-
 // Generate a code that isn't already being used
 function createLobbyCode() {
-
     let code;
 
     do {
@@ -54,7 +38,6 @@ function createLobbyCode() {
 
 // Find the first available player ID
 function getAvailablePlayerId(lobby) {
-
     for (let i = 0; i < MAX_PLAYERS; i++) {
 
         if (!lobby.players.some(player => player.id === i)) {
@@ -69,7 +52,6 @@ function getAvailablePlayerId(lobby) {
 
 // Send a message to everyone in a lobby
 function broadcast(lobby, data) {
-
     lobby.sockets.forEach(socket => {
 
         if (socket.readyState === WebSocket.OPEN) {
@@ -82,33 +64,18 @@ function broadcast(lobby, data) {
 
 
 wss.on("connection", (socket) => {
-
     console.log("New connection");
-
-    /*
-     * At this point the player isn't in a lobby yet.
-     */
 
     socket.lobbyCode = null;
     socket.playerId = null;
 
-
     socket.on("message", (message) => {
-
         try {
-
             const data = JSON.parse(message);
 
             console.log("Received:", data);
 
-
-            /*
-             * CREATE LOBBY
-             */
-
             if (data.type === "createLobby") {
-
-                // Don't allow someone to create multiple lobbies
                 if (socket.lobbyCode !== null) {
                     return;
                 }
@@ -125,14 +92,15 @@ wss.on("connection", (socket) => {
                     paintings: [],
 
                     topBid: 0,
-                    topBidder: -1
+                    topBidder: -1,
+                    auctionActive: false,
+                    currentPainting: 0
                 };
 
                 lobbies.set(code, lobby);
 
                 joinLobby(socket, lobby);
 
-                // Tell creator their lobby code
                 socket.send(JSON.stringify({
                     type: "lobbyCreated",
                     code: code,
@@ -143,23 +111,14 @@ wss.on("connection", (socket) => {
                 return;
             }
 
-
-            /*
-             * JOIN LOBBY
-             */
-
             if (data.type === "joinLobby") {
-
                 if (socket.lobbyCode !== null) {
                     return;
                 }
 
                 const code = String(data.code).toUpperCase();
-
                 const lobby = lobbies.get(code);
 
-
-                // Lobby doesn't exist
                 if (!lobby) {
 
                     socket.send(JSON.stringify({
@@ -170,10 +129,7 @@ wss.on("connection", (socket) => {
                     return;
                 }
 
-
-                // Lobby is full
                 if (lobby.players.length >= MAX_PLAYERS) {
-
                     socket.send(JSON.stringify({
                         type: "joinFailed",
                         reason: "Lobby is full."
@@ -182,19 +138,12 @@ wss.on("connection", (socket) => {
                     return;
                 }
 
-
                 joinLobby(socket, lobby);
 
                 return;
             }
 
-
-            /*
-             * PLAYER GAME MESSAGES
-             */
-
             if (socket.lobbyCode !== null) {
-
                 const lobby = lobbies.get(socket.lobbyCode);
 
                 if (!lobby) {
@@ -206,23 +155,6 @@ wss.on("connection", (socket) => {
                 );
 
                 if (!player) {
-                    return;
-                }
-
-
-                // Example player data update
-                if (data.type === "updateData") {
-
-                    player.data = {
-                        ...player.data,
-                        ...data.data
-                    };
-
-                    broadcast(lobby, {
-                        type: "playerUpdated",
-                        player: player
-                    });
-
                     return;
                 }
 
@@ -329,9 +261,13 @@ wss.on("connection", (socket) => {
 
                 if(data.type === "paintings") {
                     data.paintings.forEach(painting => lobby.paintings.push(painting));
-                    console.log(lobby.paintings.length, lobby.players.length);
 
                     if (lobby.paintings.length / 2 == lobby.players.length) {
+                        lobby.auctionActive = true;
+                        lobby.topBid = 0;
+                        lobby.topBidder = -1;
+                        lobby.currentPainting = 0;
+
                         function rand(a,b) {
                             return Math.floor(Math.random() * (b-a)) + a
                         }
@@ -370,10 +306,126 @@ wss.on("connection", (socket) => {
                 }
 
                 if (data.type === "sendBid") {
-                    if(data.bid <= lobby.topBid) {
+                    function startNextAuction(lobby) {
+                        lobby.currentPainting++;
+
+                        if (lobby.currentPainting >= lobby.paintings.length) {
+                            broadcast(lobby, {
+                                type: "gameFinished"
+                            });
+                            return;
+                        }
+
+                        lobby.topBid = 0;
+                        lobby.topBidder = -1;
+                        lobby.auctionActive = true;
+                        lobby.timer = null;
+
+                        broadcast(lobby, {
+                            type: "loadArtwork",
+                            num: lobby.currentPainting
+                        });
+                    }
+
+                    function sellArtwork(lobby) {
+                        if (!lobby.auctionActive) {
+                            return;
+                        }
+
+                        lobby.auctionActive = false;
+
+                        if (lobby.timer !== null) {
+                            clearTimeout(lobby.timer);
+                            lobby.timer = null;
+                        }
+
+                        const winner = lobby.players.find(
+                            player => player.id === lobby.topBidder
+                        );
+
+                        if (!winner) {
+                            broadcast(lobby, {
+                                type: "artworkUnsold"
+                            });
+
+                            return;
+                        }
+
+                        winner.data.money -= lobby.topBid;
+                        winner.data.paintings.push(lobby.paintings[lobby.currentPainting]);
+
+                        const winnerSocket = [...lobby.sockets].find(
+                            socket => socket.playerId === winner.id
+                        );
+
+                        if (winnerSocket && winnerSocket.readyState === WebSocket.OPEN) {
+                            winnerSocket.send(JSON.stringify({
+                                type: "updateMoney",
+                                money: winner.data.money
+                            }));
+                        }
+
+                        const artist = lobby.paintings[lobby.currentPainting].artist;
+                        var artistPlayer = lobby.players.find(
+                            player => player.id === artist
+                        );
+
+                        artistPlayer.data.money += lobby.topBid;
+
+                        const artistSocket = [...lobby.sockets].find(
+                            socket => socket.playerId === artist
+                        );
+
+                        if (artistSocket && artistSocket.readyState === WebSocket.OPEN) {
+                            artistSocket.send(JSON.stringify({
+                                type: "updateMoney",
+                                money: artistPlayer.data.money
+                            }));
+                        }
+
+                        broadcast(lobby, {
+                            type: "artworkSold",
+                            playerId: winner.id,
+                            bid: lobby.topBid
+                        });
+
+                        broadcast(lobby, {
+                            type: "lobbyPointer",
+                            pointerUp: false,
+                            playerId: lobby.topBidder
+                        });
+
+                        setTimeout(() => {
+                            startNextAuction(lobby);
+                        }, 5000);
+                    }
+
+
+                    function resetAuctionTimer(lobby) {
+
+                        if (lobby.timer !== null) {
+                            clearTimeout(lobby.timer);
+                        }
+
+                        lobby.timer = setTimeout(() => {
+                            sellArtwork(lobby);
+                        }, 10000);
+                    }
+
+
+                    if (!lobby.auctionActive) {
                         return;
                     }
-                    if(data.player == lobby.topBidder) {
+
+                    if (data.bid <= lobby.topBid) {
+                        return;
+                    }
+
+                    if (socket.playerId === lobby.topBidder) {
+                        return;
+                    }
+
+                    if (data.bid > player.data.money) {
                         return;
                     }
 
@@ -384,12 +436,12 @@ wss.on("connection", (socket) => {
                     });
 
                     lobby.topBid = data.bid;
-                    lobby.topBidder = data.player;
+                    lobby.topBidder = socket.playerId;
 
                     broadcast(lobby, {
                         type: "bidProcessed",
                         bid: lobby.topBid,
-                        player: lobby.players.find(player => player.id === lobby.topBidder)
+                        player: player
                     });
 
                     broadcast(lobby, {
@@ -397,6 +449,10 @@ wss.on("connection", (socket) => {
                         pointerUp: true,
                         playerId: lobby.topBidder
                     });
+
+                    resetAuctionTimer(lobby);
+
+                    return;
                 }
 
                 // Any other message
@@ -408,7 +464,7 @@ wss.on("connection", (socket) => {
 
         } catch (error) {
 
-            console.log("Invalid message:", error);
+            console.error("Invalid message:", error);
 
         }
 
@@ -444,7 +500,7 @@ function joinLobby(socket, lobby) {
         name: "Player" + playerId,
 
         data: {
-            money: 3000,
+            money: 2500,
             debt: 0,
             paintings: []
         }
@@ -541,6 +597,11 @@ function leaveLobby(socket) {
     }
 
     if (lobby.players.length === 0) {
+        if (lobby.timer !== null) {
+            clearTimeout(lobby.timer);
+            lobby.timer = null;
+        }
+
         lobbies.delete(lobby.code);
     }
 
@@ -560,7 +621,7 @@ const PORT = process.env.PORT || 10000;
 
 server.listen(PORT, "0.0.0.0", () => {
 
-    console.log(
+    console.info(
         `Server running on port ${PORT}`
     );
 
