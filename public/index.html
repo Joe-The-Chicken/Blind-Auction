@@ -15,7 +15,7 @@
             <button id="createBtn" class="hudbutton big" onclick="createLobby()">create lobby</button>
             <button id="joinBtn" class="hudbutton big" onclick="initJoinLobby()">join lobby</button>
             
-            <input id="goInput" class="hudinput big disabled" type="text" placeholder="Code"></input>
+            <input id="goInput" class="hudinput big disabled" type="text" placeholder="Code" autocomplete="off"></input>
             <button id="goBtn" class="hudbutton big disabled" onclick="joinLobby()">join</button>
             <button id="backBtn" class="hudbutton disabled" onclick="backLobby()">back</button>
         </div>
@@ -39,8 +39,7 @@
                 <div class="infoBox">
                     <h2>Insider Info</h2>
                     <hr>
-                    <h2>Crayon: $5,800</h2>
-                    <h2>Bird: $600</h2>
+                    <h2 id="hints"></h2>
                 </div>
             </div>
             <div id="paddleContainer"></div>
@@ -54,8 +53,8 @@
             <div class="infoBox" style="align-items: center;">
                 <h2>Prompts</h2>
                 <hr>
-                <input id="prompt1" class="hudinput long" type="text" placeholder="Prompt #1" maxlength="16"></input>
-                <input id="prompt2" class="hudinput long" type="text" placeholder="Prompt #2" maxlength="16"></input>
+                <input id="prompt1" class="hudinput long" type="text" placeholder="Prompt #1" maxlength="16" autocomplete="off"></input>
+                <input id="prompt2" class="hudinput long" type="text" placeholder="Prompt #2" maxlength="16" autocomplete="off"></input>
             </div>
         </div>
         <div id="paintingContainer" class="disabled">
@@ -94,6 +93,7 @@
             <div id="right" class="disabled">
                 <button id="money" class="hudbutton" disabled="true">$25,000</button>
             </div>
+            <input id="username" class="hudinput" type="text" placeholder="username" autocomplete="off" maxlength="16" onchange="updateUsername()"></input>
         </div>
         <div id="overlay"></div>
     </body>

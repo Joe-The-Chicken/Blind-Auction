@@ -2,24 +2,52 @@ const socket = new WebSocket(
     `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}`
 );
 
-const paddleContainer = document.getElementById("paddleContainer");
-
 let myPlayerId = null;
 let lobbyState = null;
+
+if(localStorage.getItem("username")) {
+    document.getElementById("username").value = localStorage.getItem("username");
+}
 
 /*
 █░░ █▀█ █▀▀ ▄▀█ █░░   █▀▀ █░█ █▄░█ █▀▀ ▀█▀ █ █▀█ █▄░█ █▀
 █▄▄ █▄█ █▄▄ █▀█ █▄▄   █▀░ █▄█ █░▀█ █▄▄ ░█░ █ █▄█ █░▀█ ▄█
 */
 
+const sounds = {
+    "click": new Audio('../audio/click.wav')
+}
+
+var heads = [];
+
+for(let i = 0; i < 8; i++) {
+    const a = new Image();
+    a.src = `../img/head${i}.png`;
+    heads.push(a.src);
+}
+
+console.log(heads);
+// preload heads
+
+function playsound(id) {
+    const sound = sounds[id];
+    if (!sound) return;
+
+    sound.currentTime = 0;
+    sound.play().catch(() => {});
+}
+
 // main menu
 function createLobby() {
+    playsound("click");
     sendMessage({
-        type: "createLobby"
+        type: "createLobby",
+        username: localStorage.getItem("username") || ""
     });
 }
 
 function backLobby() {
+    playsound("click");
     document.getElementById("top").children[0].textContent = "Money for Babies";
     document.getElementById("top").className = "";
     document.getElementById("joinContainer").classList.remove("disabled");
@@ -38,9 +66,11 @@ function backLobby() {
     document.getElementById("mid").classList.add("disabled");
     document.getElementById("right").classList.add("disabled");
     document.getElementById("lobbyStartBtn").classList.add("disabled");
+    document.getElementById("username").classList.remove("disabled");
 }
 
 function initJoinLobby() {
+    playsound("click");
     document.getElementById("top").children[0].textContent = "Join a Lobby";
     document.getElementById("createBtn").classList.add("disabled");
     document.getElementById("joinBtn").classList.add("disabled");
@@ -50,15 +80,19 @@ function initJoinLobby() {
 }
 
 function joinLobby() {
+    playsound("click");
     const code = document.getElementById("goInput").value.trim().toUpperCase();
 
     sendMessage({
         type: "joinLobby",
-        code: code
+        code: code,
+        username: localStorage.getItem("username") || ""
     });
 }
 
 function enterGame(code) {
+    document.getElementById("username").classList.add("disabled");
+
     document
         .getElementById("top")
         .className = "lobby"
@@ -83,8 +117,37 @@ function enterGame(code) {
     updateStartButton();
 }
 
+function updateUsername() {
+    localStorage.setItem("username",document.getElementById("username").value.trim());
+}
+
 // lobby
-function addPointer(playerId) {
+const paddleContainer = document.getElementById("paddleContainer");
+const pointerRaisedState = new Map();
+
+function normalizeHeadNum(headNum) {
+    const value = Number(headNum);
+    if (!Number.isFinite(value)) return 0;
+    return Math.max(0, Math.min(7, Math.round(value)));
+}
+
+function getHeadImage(headNum) {
+    return heads[headNum];
+}
+
+function setPointerHead(playerId, headNum) {
+    const pointer = document.getElementById(`pointer${playerId}`);
+    if (!pointer) return;
+
+    const head = pointer.querySelector(".pointerHead");
+    if (!head) return;
+
+    const normalized = normalizeHeadNum(headNum);
+    head.setAttribute("headNum", normalized);
+    head.src = getHeadImage(normalized);
+}
+
+function addPointer(playerId, playerName, headNum = 0) {
     // Don't add it twice
     if (document.getElementById(`pointer${playerId}`)) {
         return;
@@ -95,39 +158,63 @@ function addPointer(playerId) {
     pointer.id = `pointer${playerId}`;
     pointer.className = "pointer";
 
+    const label = document.createElement("div");
+    label.className = "pointerLabel";
+    label.textContent = playerName;
+
     // Player-specific shaft
     const shaft = document.createElement("img");
     shaft.className = "pointerShaft";
     shaft.src = `img/pointer${playerId}.png`;
 
-    const headNum = 7;
-
     // Customizable head
     const head = document.createElement("img");
     head.className = "pointerHead";
-    head.src = `img/head${headNum}.png`;
 
-    const offsetXMap = [-14, 0, 0, 0, 0, 0, -2, -28];
+    const normalizedHead = normalizeHeadNum(headNum);
+    head.src = getHeadImage(normalizedHead);
+    head.setAttribute("headNum", normalizedHead);
+
+    const offsetXMap = [-14, 18, -6, -2, -18, -2, -2, -28];
 
     function loadPointer() {
         const pixelScale = shaft.clientWidth / shaft.naturalWidth;
-
-        head.style.width = `${head.naturalWidth * pixelScale}px`;
+        const h = normalizeHeadNum(head.getAttribute("headNum"));
+        
+        head.src = getHeadImage(h);
+        if(head.naturalWidth * pixelScale || 0 != 0) head.style.width = `${head.naturalWidth * pixelScale}px`;
         head.style.transform =
-            `translate(${offsetXMap[headNum] * pixelScale}px, ${8 * pixelScale}px)`;
+            `translate(${offsetXMap[h] * pixelScale}px, ${8 * pixelScale}px)`;
+
+        if(head.naturalWidth * pixelScale || 0 != 0) label.style.width = `${head.naturalWidth * pixelScale}px`;
+        label.style.transform =
+            `translate(${offsetXMap[h] * pixelScale}px, ${8 * pixelScale}px)`;
 
         requestAnimationFrame(loadPointer);
     }
 
     requestAnimationFrame(loadPointer);
 
+    pointer.appendChild(label);
     pointer.appendChild(head);
     pointer.appendChild(shaft);
 
     if (playerId == myPlayerId) {
-        pointer.onmouseover = () => {
+        pointer.onclick = () => {
             if (lobbyState != "lobby") return;
 
+            playsound("click");
+
+            sendMessage({
+                type: "changeHead"
+            });
+        };
+
+        pointer.onmouseenter = () => {
+            if (lobbyState != "lobby") return;
+            if (pointerRaisedState.get(playerId) === true) return;
+
+            pointerRaisedState.set(playerId, true);
             sendMessage({
                 type: "lobbyPointer",
                 pointerUp: true,
@@ -135,9 +222,11 @@ function addPointer(playerId) {
             });
         };
 
-        pointer.onmouseout = () => {
+        pointer.onmouseleave = () => {
             if (lobbyState != "lobby") return;
+            if (pointerRaisedState.get(playerId) !== true) return;
 
+            pointerRaisedState.set(playerId, false);
             sendMessage({
                 type: "lobbyPointer",
                 pointerUp: false,
@@ -163,6 +252,7 @@ function raisePointer(playerId) {
 
     if (pointer) {
         pointer.classList.add("raised");
+        pointerRaisedState.set(playerId, true);
     }
 }
 
@@ -171,6 +261,7 @@ function lowerPointer(playerId) {
 
     if (pointer) {
         pointer.classList.remove("raised");
+        pointerRaisedState.set(playerId, false);
     }
 }
 
@@ -222,6 +313,8 @@ function updateStartButton() {
 }
 
 function leaveGame() {
+    playsound("click");
+
     document.querySelectorAll("#paddleContainer img").forEach(pointer => pointer.remove());
     document.querySelectorAll('[id^="lobbyPlayer"]').forEach(player => player.remove());
 
@@ -239,6 +332,8 @@ var timerInterval = null;
 var timerMode = null;
 
 function startGame() {
+    playsound("click");
+
     sendMessage({
         type: "startGame"
     });
@@ -489,6 +584,7 @@ function saveAndClearPainting() {
 }
 
 function nextPrompt() {
+    playsound("click");
     saveAndClearPainting();
     document.getElementById("paintingPrompt").textContent = "Prompt: " + prompts[1];
     if(paintings.length == 2 /* total paintings */ - 1) {
@@ -497,6 +593,8 @@ function nextPrompt() {
 }
 
 function setBrush(id) {
+    playsound("click");
+
     const brush = document.getElementById("brush");
     const eraser = document.getElementById("eraser");
 
@@ -561,6 +659,16 @@ function updateBidStatus() {
     document.getElementById("raise2").textContent = `$${(topBid + 200).toLocaleString("en-us")}`;
     document.getElementById("raise3").textContent = `$${(topBid + 300).toLocaleString("en-us")}`;
 
+    const h = document.getElementById("hints");
+    h.textContent = "";
+    for (const hint of hints) {
+        h.innerHTML +=
+            hint.prompt +
+            " is worth $" +
+            (hint.value || 0).toLocaleString("en-US") +
+            "<br>";
+    }
+
     document.getElementById("money").textContent = `$${money.toLocaleString("en-us")}`;
 
     const bidButtons = document.getElementById("mid").children;
@@ -605,14 +713,17 @@ function updateBidTimerDisplay() {
 }
 
 function raise1() {
+    playsound("click");
     submitBid(topBid + 100);
 }
 
 function raise2() {
+    playsound("click");
     submitBid(topBid + 200);
 }
 
 function raise3() {
+    playsound("click");
     submitBid(topBid + 300);
 }
 
@@ -659,7 +770,7 @@ socket.onmessage = (event) => {
         myPlayerId = message.yourId;
 
         message.players.forEach(player => {
-            addPointer(player.id);
+            addPointer(player.id, player.name, player.head ?? 0);
             addPlayerToLobby(player);
         });
 
@@ -667,7 +778,7 @@ socket.onmessage = (event) => {
     }
 
     if (message.type === "playerJoined") {
-        addPointer(message.player.id);
+        addPointer(message.player.id, message.player.name, message.player.head ?? 0);
         addPlayerToLobby(message.player);
         return;
     }
@@ -682,12 +793,17 @@ socket.onmessage = (event) => {
         myPlayerId = message.yourId;
 
         message.players.forEach(player => {
-            addPointer(player.id);
+            addPointer(player.id, player.name, player.head ?? 0);
             addPlayerToLobby(player);
         });
 
         enterGame(message.code);
 
+        return;
+    }
+
+    if (message.type === "headChanged") {
+        setPointerHead(message.playerId, message.head);
         return;
     }
 
@@ -753,6 +869,8 @@ socket.onmessage = (event) => {
         currentPainting = message.num;
         loadArtwork();
         updateBidStatus();
+
+        document.getElementById("imageBox").classList.remove("dropped");
     }
 
     if (message.type === "bidProcessed") {
@@ -773,6 +891,8 @@ socket.onmessage = (event) => {
     if (message.type === "artworkSold") {
         topBid = message.bid;
         lastBidder = message.playerId;
+
+        document.getElementById("imageBox").classList.add("dropped");
 
         updateBidStatus();
 

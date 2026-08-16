@@ -172,6 +172,12 @@ body {
         background-color 0.25s ease-in-out;
 }
 
+#username {
+    width: calc(48 * (min(9vw, 16vh) / 16));
+    margin-left: calc(50% - 24 * (min(9vw, 16vh) / 16));
+    text-transform: none;
+}
+
 .hudinput.big {
     width: calc(36 * (min(9vw, 16vh) / 16));
     height: calc(12 * (min(9vw, 16vh) / 16));
@@ -207,6 +213,7 @@ h2 {
     display: flex;
     align-items: center;
     justify-content: space-around;
+    overflow: visible;
 }
 
 .infoBox {
@@ -293,11 +300,16 @@ h2 {
     border: #0e121f calc(2 * (min(9vw, 16vh) / 16)) solid;
     filter: drop-shadow(0px 0px 6px rgba(0, 0, 0, 0.6));
     background-color: white;
+    transition: transform 1s cubic-bezier(0.5, -0.5, 0.5, 1.5);
 }
 
 #imageBox img, #paintingBox canvas {
     height: 100%;
     aspect-ratio: 1/1;
+}
+
+#imageBox.dropped {
+    transform: translateY(-300%);
 }
 
 #paddleContainer {
@@ -321,7 +333,18 @@ h2 {
 }
 
 .pointerShaft {
-    width: calc(7 * (min(9vw, 16vh) / 16));
+    width: calc(6 * (min(9vw, 16vh) / 16));
+}
+
+.pointerLabel {
+    height: min-content;
+    font-size: calc(3 * (min(9vw, 16vh) / 16));
+    font-weight: 700;
+    color: white;
+    overflow: visible;
+    margin-bottom: calc(1 * (min(9vw, 16vh) / 16));
+    display: flex;
+    justify-content: center;
 }
 
 #paddleContainer .pointer.raised {
