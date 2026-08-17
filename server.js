@@ -287,7 +287,7 @@ wss.on("connection", (socket) => {
                                 let p = player.data.prompts;
 
                                 for(let i = 0; i < PAINTINGS_PER_PERSON; i++) {
-                                    if(p[i] == "") p[i] = replace[player.id*2 + i];
+                                    if(p[i] == "") p[i] = replace[player.id*2 + i].toUpperCase();
                                 }
 
                                 socket.send(JSON.stringify({
@@ -423,22 +423,25 @@ wss.on("connection", (socket) => {
                             }));
                         }
 
-                        const artist = lobby.paintings[lobby.currentPainting].artist;
-                        var artistPlayer = lobby.players.find(
-                            player => player.id === artist
-                        );
+                        
+                            const artist = lobby.paintings[lobby.currentPainting].artist;
+                            var artistPlayer = lobby.players.find(
+                                player => player.id === artist
+                            );
 
-                        artistPlayer.data.money += lobby.topBid;
+                        if(artistPlayer.id != winner.id) {
+                            artistPlayer.data.money += lobby.topBid;
 
-                        const artistSocket = [...lobby.sockets].find(
-                            socket => socket.playerId === artist
-                        );
+                            const artistSocket = [...lobby.sockets].find(
+                                socket => socket.playerId === artist
+                            );
 
-                        if (artistSocket && artistSocket.readyState === WebSocket.OPEN) {
-                            artistSocket.send(JSON.stringify({
-                                type: "updateMoney",
-                                money: artistPlayer.data.money
-                            }));
+                            if (artistSocket && artistSocket.readyState === WebSocket.OPEN) {
+                                artistSocket.send(JSON.stringify({
+                                    type: "updateMoney",
+                                    money: artistPlayer.data.money
+                                }));
+                            }
                         }
 
                         broadcast(lobby, {

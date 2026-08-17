@@ -325,6 +325,16 @@ function leaveGame() {
     location.reload();
 }
 
+async function transition(then) {
+    const t = document.getElementById("transition");
+    t.className = "down";
+
+    const p = setTimeout(() => {
+        t.className = "up";
+        then();
+    }, 1000);
+}
+
 //writing
 var secondsLeft = 0;
 var timerEnd = 0;
@@ -817,7 +827,9 @@ socket.onmessage = (event) => {
     }
 
     if (message.type === "gameStarted") {
-        startWriting();
+        transition(() => {
+            startWriting();
+        });
     }
 
     if (message.type === "grabPrompts") {
@@ -833,7 +845,9 @@ socket.onmessage = (event) => {
 
     if (message.type === "startPainting") {
         prompts = message.prompts;
-        startPainting();
+        transition(() => {
+            startPainting();
+        });
     }
 
     if (message.type === "grabPaintings") {
@@ -861,8 +875,10 @@ socket.onmessage = (event) => {
         hints = message.hints;
         money = message.startingMoney;
         currentPainting = 0;
-        initBidding();
-        loadArtwork();
+        transition(() => {
+            initBidding();
+            loadArtwork();
+        });
     }
 
     if (message.type === "loadArtwork") {
