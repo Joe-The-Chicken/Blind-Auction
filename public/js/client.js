@@ -16,7 +16,8 @@ if(localStorage.getItem("username")) {
 
 const sounds = {
     "click": new Audio('../audio/click.wav'),
-    "pop": new Audio('../audio/pop.wav')
+    "pop": new Audio('../audio/pop.wav'),
+    "whoosh": new Audio('../audio/whoosh.wav')
 }
 
 var heads = [];
@@ -249,6 +250,8 @@ function removePointer(playerId) {
 }
 
 function raisePointer(playerId) {
+    playsound("whoosh");
+
     const pointer = document.getElementById(`pointer${playerId}`);
 
     if (pointer) {
@@ -258,6 +261,8 @@ function raisePointer(playerId) {
 }
 
 function lowerPointer(playerId) {
+    playsound("whoosh");
+
     const pointer = document.getElementById(`pointer${playerId}`);
 
     if (pointer) {
