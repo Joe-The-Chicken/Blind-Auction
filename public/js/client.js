@@ -15,7 +15,8 @@ if(localStorage.getItem("username")) {
 */
 
 const sounds = {
-    "click": new Audio('../audio/click.wav')
+    "click": new Audio('../audio/click.wav'),
+    "pop": new Audio('../audio/pop.wav')
 }
 
 var heads = [];
@@ -145,6 +146,8 @@ function setPointerHead(playerId, headNum) {
     const normalized = normalizeHeadNum(headNum);
     head.setAttribute("headNum", normalized);
     head.src = getHeadImage(normalized);
+
+    playsound("pop");
 }
 
 function addPointer(playerId, playerName, headNum = 0) {
@@ -202,8 +205,6 @@ function addPointer(playerId, playerName, headNum = 0) {
     if (playerId == myPlayerId) {
         pointer.onclick = () => {
             if (lobbyState != "lobby") return;
-
-            playsound("click");
 
             sendMessage({
                 type: "changeHead"
