@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>BLIND AUCTION | V0.1</title>
+        <title>Money for Babies | V0.1</title>
         <link rel="stylesheet" href="css/style.css">
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -72,6 +72,7 @@
                 </div>
             </div>
             <div id="paintingBar">
+                <div id="colorPalette"></div>
                 <button id="brush" class="hudbutton square selected" onclick="setBrush('brush')">
                     <span class="toolIcon brushIcon"></span>
                 </button>
@@ -93,7 +94,7 @@
             <div id="right" class="disabled">
                 <button id="money" class="hudbutton" disabled="true">$25,000</button>
             </div>
-            <input id="username" class="hudinput" type="text" placeholder="username" autocomplete="off" maxlength="16" onchange="updateUsername()"></input>
+            <input id="username" class="hudinput" type="text" placeholder="username" autocomplete="off" maxlength="8" onchange="updateUsername()"></input>
         </div>
         <div id="transition" class="up"></div>
         <div id="overlay"></div>

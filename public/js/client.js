@@ -145,19 +145,69 @@ function setPointerHead(playerId, headNum) {
     if (!head) return;
 
     const normalized = normalizeHeadNum(headNum);
+
     head.setAttribute("headNum", normalized);
     head.src = getHeadImage(normalized);
+
+    updatePointerLayout(pointer);
 
     playsound("pop");
 }
 
-function addPointer(playerId, playerName, headNum = 0) {
-    // Don't add it twice
+function updatePointerLayout(pointer) {
+    const shaft = pointer.querySelector(".pointerShaft");
+    const head = pointer.querySelector(".pointerHead");
+    const label = pointer.querySelector(".pointerLabel");
+
+    if (!shaft || !head || !label) return;
+
+    if (!shaft.complete || !shaft.naturalWidth) return;
+    if (!head.complete || !head.naturalWidth) return;
+
+    const pixelScale =
+        shaft.clientWidth / shaft.naturalWidth;
+
+    const headNum =
+        normalizeHeadNum(head.getAttribute("headNum"));
+
+    const offsetXMap = [
+        -14,
+        18,
+        -6,
+        -2,
+        -18,
+        -2,
+        -2,
+        -28
+    ];
+
+    const width =
+        head.naturalWidth * pixelScale;
+
+    const offsetX =
+        offsetXMap[headNum] * pixelScale;
+
+    const offsetY =
+        8 * pixelScale;
+
+    head.style.width = `${width}px`;
+
+    head.style.transform =
+        `translate(${offsetX}px, ${offsetY}px)`;
+
+    label.style.width = `${width}px`;
+
+    label.style.transform =
+        `translate(${offsetX}px, ${offsetY}px)`;
+}
+
+function addPointer(playerId, playerName = `Player${playerId}`, headNum = 0) {
+
+    // Don't create duplicates
     if (document.getElementById(`pointer${playerId}`)) {
         return;
     }
 
-    // Container for the entire pointer
     const pointer = document.createElement("div");
     pointer.id = `pointer${playerId}`;
     pointer.className = "pointer";
@@ -166,57 +216,66 @@ function addPointer(playerId, playerName, headNum = 0) {
     label.className = "pointerLabel";
     label.textContent = playerName;
 
-    // Player-specific shaft
     const shaft = document.createElement("img");
     shaft.className = "pointerShaft";
     shaft.src = `img/pointer${playerId}.png`;
 
-    // Customizable head
     const head = document.createElement("img");
     head.className = "pointerHead";
 
     const normalizedHead = normalizeHeadNum(headNum);
-    head.src = getHeadImage(normalizedHead);
+
     head.setAttribute("headNum", normalizedHead);
-
-    const offsetXMap = [-14, 18, -6, -2, -18, -2, -2, -28];
-
-    function loadPointer() {
-        const pixelScale = shaft.clientWidth / shaft.naturalWidth;
-        const h = normalizeHeadNum(head.getAttribute("headNum"));
-        
-        head.src = getHeadImage(h);
-        if(head.naturalWidth * pixelScale || 0 != 0) head.style.width = `${head.naturalWidth * pixelScale}px`;
-        head.style.transform =
-            `translate(${offsetXMap[h] * pixelScale}px, ${8 * pixelScale}px)`;
-
-        if(head.naturalWidth * pixelScale || 0 != 0) label.style.width = `${head.naturalWidth * pixelScale}px`;
-        label.style.transform =
-            `translate(${offsetXMap[h] * pixelScale}px, ${8 * pixelScale}px)`;
-
-        requestAnimationFrame(loadPointer);
-    }
-
-    requestAnimationFrame(loadPointer);
+    head.src = getHeadImage(normalizedHead);
 
     pointer.appendChild(label);
     pointer.appendChild(head);
     pointer.appendChild(shaft);
 
-    if (playerId == myPlayerId) {
+    paddleContainer.appendChild(pointer);
+
+
+    // Calculate layout when the images finish loading
+    shaft.addEventListener("load", () => {
+        updatePointerLayout(pointer);
+    });
+
+    head.addEventListener("load", () => {
+        updatePointerLayout(pointer);
+    });
+
+
+    // If images were already cached
+    updatePointerLayout(pointer);
+
+
+    // Only your own pointer is interactive
+    if (playerId === myPlayerId) {
+
         pointer.onclick = () => {
-            if (lobbyState != "lobby") return;
+
+            if (lobbyState !== "lobby") {
+                return;
+            }
 
             sendMessage({
                 type: "changeHead"
             });
         };
 
+
         pointer.onmouseenter = () => {
-            if (lobbyState != "lobby") return;
-            if (pointerRaisedState.get(playerId) === true) return;
+
+            if (lobbyState !== "lobby") {
+                return;
+            }
+
+            if (pointerRaisedState.get(playerId) === true) {
+                return;
+            }
 
             pointerRaisedState.set(playerId, true);
+
             sendMessage({
                 type: "lobbyPointer",
                 pointerUp: true,
@@ -224,11 +283,19 @@ function addPointer(playerId, playerName, headNum = 0) {
             });
         };
 
+
         pointer.onmouseleave = () => {
-            if (lobbyState != "lobby") return;
-            if (pointerRaisedState.get(playerId) !== true) return;
+
+            if (lobbyState !== "lobby") {
+                return;
+            }
+
+            if (pointerRaisedState.get(playerId) !== true) {
+                return;
+            }
 
             pointerRaisedState.set(playerId, false);
+
             sendMessage({
                 type: "lobbyPointer",
                 pointerUp: false,
@@ -236,8 +303,6 @@ function addPointer(playerId, playerName, headNum = 0) {
             });
         };
     }
-
-    paddleContainer.appendChild(pointer);
 }
 
 
@@ -479,6 +544,18 @@ function getCanvasPosition(event) {
 
 
 // Start drawing
+function toggleColorPicker() {
+    document
+        .getElementById("colorPalette")
+        .classList.toggle("disabled");
+}
+
+function offColorPicker() {
+    document
+        .getElementById("colorPalette")
+        .classList.add("disabled");
+}
+
 canvas.addEventListener("mousedown", (event) => {
     painting = true;
     draw(event);
@@ -591,12 +668,29 @@ function startPainting() {
     document.getElementById("paintingPrompt").textContent =
         "Prompt: " + prompts[0];
 
+    colors.forEach(color => {
+        const p = document.getElementById("colorPalette");
+
+        const e = document.createElement("button");
+        e.className = "hudbutton smallsquare";
+        e.style.backgroundColor = color;
+        e.onclick = () => {
+            setBrush(colors.indexOf(color));
+        }
+
+        p.appendChild(e);
+    });
+
+    ctx.fillStyle = "white";
+    ctx.fillRect(0,0,400,400);
+
     startTimer(90);
 }
 
 function saveAndClearPainting() {
     paintings.push(canvas.toDataURL("image/png"));
-    ctx.clearRect(0,0,400,400);
+    ctx.fillStyle = "white";
+    ctx.fillRect(0,0,400,400);
 }
 
 function nextPrompt() {
@@ -614,16 +708,25 @@ function setBrush(id) {
     const brush = document.getElementById("brush");
     const eraser = document.getElementById("eraser");
 
-    brush.classList.remove("selected");
-    eraser.classList.remove("selected");
-
     if(id == "brush") {
-        brush.classList.add("selected");
-    }
-    if(id == "eraser") {
+        if(brush.classList.contains("selected")) {
+            toggleColorPicker();
+        } else {
+            brush.classList.add("selected");
+            eraser.classList.remove("selected");
+        }
+        brush.children[0].style.backgroundColor = colors[brushColor];
+        currentTool = id;
+    } else if(id == "eraser") {
         eraser.classList.add("selected");
+        brush.classList.remove("selected");
+        offColorPicker();
+        currentTool = id;
+        brush.children[0].style = "";
+    } else {
+        brushColor = id;
+        brush.children[0].style.backgroundColor = colors[brushColor];
     }
-    currentTool = id;
 }
 
 function endPainting() {
@@ -796,6 +899,7 @@ socket.onmessage = (event) => {
     if (message.type === "playerJoined") {
         addPointer(message.player.id, message.player.name, message.player.head ?? 0);
         addPlayerToLobby(message.player);
+        playsound("pop");
         return;
     }
 
